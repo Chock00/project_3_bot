@@ -4,13 +4,15 @@ from telegram.ext import Application, MessageHandler, filters
 from telegram.ext import CommandHandler
 import datetime as dt
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from data import db_session
 
+db_session.global_init("db/people.db")
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 TIMER = 5
-reply_keyboard = [['/dice', '/timer']]
+reply_keyboard = [['/dice54к', '/timer']]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 
 
@@ -28,45 +30,6 @@ async def time(update, context):
     t = str(str(dt.datetime.now()).split(' ')[-1])
     await update.message.reply_text(t)
 
-async def date(update, context):
-    d = str(dt.date.today())
-    await update.message.reply_text(d)
-
-async def set_timer(update, context):
-    """Добавляем задачу в очередь"""
-    chat_id = update.effective_message.chat_id
-    # Добавляем задачу в очередь
-    # и останавливаем предыдущую (если она была)
-    t = context.args[0]
-    job_removed = remove_job_if_exists(str(chat_id), context)
-    context.job_queue.run_once(task, int(t), chat_id=chat_id, name=str(chat_id), data=int(t))
-    text = 'Вернусь через ' + t + ' с.!'
-    if job_removed:
-        text += ' Старая задача удалена.'
-    await update.effective_message.reply_text(text)
-
-
-def remove_job_if_exists(name, context):
-    """Удаляем задачу по имени.
-    Возвращаем True если задача была успешно удалена."""
-    current_jobs = context.job_queue.get_jobs_by_name(name)
-    if not current_jobs:
-        return False
-    for job in current_jobs:
-        job.schedule_removal()
-    return True
-
-async def task(context):
-    """Выводит сообщение"""
-    await context.bot.send_message(context.job.chat_id, text=f'КУКУ! ' + str(context.job.data) + 'c. прошли!')
-
-
-async def unset(update, context):
-    """Удаляет задачу, если пользователь передумал"""
-    chat_id = update.message.chat_id
-    job_removed = remove_job_if_exists(str(chat_id), context)
-    text = 'Таймер отменен!' if job_removed else 'У вас нет активных таймеров'
-    await update.message.reply_text(text)
 
 
 async def close_keyboard(update, context):
@@ -81,9 +44,6 @@ def main():
     text_handler = MessageHandler(filters.TEXT, echo)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("time", time))
-    application.add_handler(CommandHandler("set", set_timer))
-    application.add_handler(CommandHandler("unset", unset))
-    application.add_handler(CommandHandler("date", date))
     application.add_handler(CommandHandler("close", close_keyboard))
     application.add_handler(text_handler)
     application.run_polling()
@@ -91,3 +51,19 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+import sqlite3from PIL import Image
+# открываем изображение
+image = Image.open('example.jpg')
+# преобразуем изображение в массив байтов
+image_bytes = image.tobytes()
+# подключаемся к базе данных 
+SQLiteconnection = sqlite3.connect('database.sqlite')
+cursor = connection.cursor()
+# создаем таблицу для хранения изображений
+cursor.execute('CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, data BLOB)')
+# сохраняем изображение в базе данных
+cursor.execute('INSERT INTO images (data) VALUES (?)', (image_bytes,))connection.commit()
+# закрываем соединение с базой данных
+cursor.close()connection.close()
