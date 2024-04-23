@@ -10,34 +10,6 @@ import sqlite3
 
 
 db_session.global_init("db/base.db")
-user_1 = User()
-user_1.id_tg = "1711108797"
-user_1.is_autorized = False
-user_1.set_password('pw')
-db_sess = db_session.create_session()
-db_sess.add(user_1)
-db_sess.commit()
-
-suslik_1 = Suslik()
-suslik_1.name = "Mega_sus"
-suslik_1.information = "The most dangerous suslik"
-with open('data/img/mega_sus.jpg', mode='rb') as f:
-    binary = sqlite3.Binary(f.read())
-suslik_1.foto_bytes = binary
-db_sess = db_session.create_session()
-db_sess.add(suslik_1)
-db_sess.commit()
-
-suslik_2 = Suslik()
-suslik_2.name = "Susi"
-suslik_2.information = "Common_suslik_1"
-with open('data/img/common_sus.jpg', mode='rb') as f:
-    binary = sqlite3.Binary(f.read())
-suslik_2.foto_bytes = binary
-db_sess = db_session.create_session()
-db_sess.add(suslik_2)
-db_sess.commit()
-
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
 )
@@ -45,34 +17,39 @@ logger = logging.getLogger(__name__)
 TIMER = 5
 reply_keyboard = [['/see_all_info', '/change_info_sus'], 
                   ['/add_suslik', '/add_user']]
+start_key = [['/autorize']]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 
-
-def check_autorize(user_id, pw):
-    db_sess = db_session.create_session()
-    user = db_sess.query(User).filter(User.id_tg == user_id).first()
-    if  bool(user and user.check_password(pw)) is True:
-        user.is_autorized = True
-        return True
-    return False
-
-
-async def autoriz(update, context):
-    text = str(update.message.text)
-    user_id = update.message.from_user.id
-    name = update.message.from_user.username
-    if check_autorize(text, user_id):
-        await update.message.reply_text('Добро пожаловать в систему, ' + name)
-    else:
-        await update.message.reply_text('Неверный пароль')
 
 async def start(update, context):
     await update.message.reply_text(
         '''Главная секретная система армии сопротивления против сусликов. 
         Для использования системы, пожалуйста, введите свой пароль''',
         reply_markup=markup
-    )
+    )  
 
+
+async def autoriz(update, context):
+    text = str(update.message.text)
+    user_id = update.message.from_user.id
+    name = update.message.from_user.username
+    if check(user_id):
+        await update.message.reply_text('Вы уже вошли в аккаунт')  
+    elif check_autorize(user_id, text):
+        await update.message.reply_text('Добро пожаловать в систему, ' + name)
+    else:
+        await update.message.reply_text('Неправильный пароль')
+
+
+def check_autorize(user_id, pw):
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.id_tg == user_id).first()
+    if user.check_password(pw):
+        user.is_autorized = True
+        db_sess.commit()
+        return True
+    return False
+             
 
 async def autorize(update, context):
     await update.message.reply_text(
@@ -100,8 +77,8 @@ async def see_all_info(update, context):
             foto = sus.foto_bytes
             line_3 = 'Фото: '
             line_4 = '***********' + '\n'
-            all_lines.append(line_1, line_2, line_3, line_4)
-        await update.message.reply_text(all_lines)
+            all_lines.append(line_1 + line_2 + line_3 + line_4)
+        await update.message.reply_text('\n'.join(all_lines))
     else:
         await update.message.reply_text('Доступ ограничен. Войдите в систему')
 
@@ -153,7 +130,14 @@ async def information_sus(update, context):
 
 async def foto_sus(update, context):
     await update.message.reply_text('Готово')
-    add_sus(context.user_data['name'], context.user_data['info'], update.message.text)
+    fileID = update.message.photo[-1].file_id   
+    file_info = context.bot.get_file(fileID)
+    downloaded_file = context.bot.download_file(file_info.file_path)
+    with open("data/img/image.jpg", 'wb') as new_file:
+        new_file.write(downloaded_file)
+    with open('data/img/image.jpg', mode='rb') as f:
+        binary = sqlite3.Binary(f.read())
+    add_sus(context.user_data['name'], context.user_data['info'], binary)
     return ConversationHandler.END
 
 
@@ -203,6 +187,7 @@ def ad_user(id_tg, password):
     db_sess = db_session.create_session()
     user = User()
     user.id_tg = id_tg
+    user.is_autorized = False
     user.set_password(password)
     db_sess.add(user)
     db_sess.commit()
@@ -237,7 +222,7 @@ conv_handler_3 = ConversationHandler(
         states={
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, name)],
             2: [MessageHandler(filters.TEXT & ~filters.COMMAND, what)],
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, new)]
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, new)]
         },
         fallbacks=[CommandHandler('ok', ok)]
     )
@@ -246,8 +231,10 @@ def main():
     text_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, autoriz)
     application.add_handler(conv_handler_1)
     application.add_handler(conv_handler_2)
+    application.add_handler(conv_handler_3)
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("see", see_all_info))
+    application.add_handler(CommandHandler("autorize", autorize))
+    application.add_handler(CommandHandler("see_all_info", see_all_info))
     application.add_handler(CommandHandler("close", close_keyboard))
     application.add_handler(text_handler)
     application.run_polling()
