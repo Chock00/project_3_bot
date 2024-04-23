@@ -8,4 +8,4 @@ class Suslik(SqlAlchemyBase):
                            primary_key=True, autoincrement=True)
     name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     information = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    foto_bytes = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    foto_bytes = sqlalchemy.Column(sqlalchemy.BLOB, nullable=True)
