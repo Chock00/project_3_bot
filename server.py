@@ -28,7 +28,7 @@ markup_start = ReplyKeyboardMarkup(start_key, one_time_keyboard=False)
 async def start(update, context):
     await update.message.reply_text(
         '''Главная секретная система армии сопротивления против сусликов. 
-        Для использования системы, пожалуйста, введите свой пароль''',
+        Для использования системы, пожалуйста, введите свой пароль''', reply_keyboard=markup
     )  
 
 
@@ -120,13 +120,13 @@ async def add_suslik(update, context):
 async def name_sus(update, context):
     await update.message.reply_text('Введите всю имеющуюся информацию о данном суслике')
     context.user_data['name'] = update.message.text
-    return 2
+    return 3
 
 
 async def location_sus(update, context):
     await update.message.reply_text('Введите город обитания суслика')
     context.user_data['info'] = update.message.text
-    return 3
+    return 2
 
 
 async def information_sus(update, context):
@@ -137,11 +137,8 @@ async def information_sus(update, context):
 
 async def foto_sus(update, context):
     await update.message.reply_text('Готово')
-    fileID = update.message.photo[-1].file_id   
-    file_info = context.bot.get_file(fileID)
-    downloaded_file = context.bot.download_file(file_info.file_path)
-    with open("data/img/image.jpg", 'wb') as new_file:
-        new_file.write(downloaded_file)
+    new_file = await update.message.effective_attachment[-1].get_file()
+    await new_file.download_to_drive("data/img/image.jpg")
     with open('data/img/image.jpg', mode='rb') as f:
         binary = sqlite3.Binary(f.read())
     add_sus(context.user_data['name'], context.user_data['info'], context.user_data['location'], binary)
@@ -305,7 +302,7 @@ conv_handler_1 = ConversationHandler(
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_sus)],
             2: [MessageHandler(filters.TEXT & ~filters.COMMAND, information_sus)],
             3: [MessageHandler(filters.TEXT & ~filters.COMMAND, location_sus)],
-            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, foto_sus)]
+            4: [MessageHandler(~filters.COMMAND, foto_sus)]
         },
         fallbacks=[CommandHandler('ok', ok)]
     )
