@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 TIMER = 5
-reply_keyboard = [['/add_suslik', '/add_user'], 
+reply_keyboard = [['/add_suslik', '/add_user', '/see_one_info'], 
                   ['/see_all_info', '/change_info_sus', '/find_closest_sus']]
 start_key = [['/autorize']]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -116,6 +116,7 @@ async def add_suslik(update, context):
     else:
         await update.message.reply_text('Доступ ограничен. Войдите в систему', reply_markup=markup_start)
 
+
 async def name_sus(update, context):
     await update.message.reply_text('Введите всю имеющуюся информацию о данном суслике')
     context.user_data['name'] = update.message.text
@@ -175,6 +176,29 @@ async def find_closest_sus(update, context):
         await update.message.reply_text('Доступ ограничен. Войдите в систему', reply_markup=markup_start)
 
 
+async def see_one_info(update, context):
+    if check(update.message.from_user.id):
+        await update.message.reply_text('Введите имя суслика, информацию о котором хотите узнать')
+        return 1
+    else:
+        await update.message.reply_text('Доступ ограничен. Войдите в систему', reply_markup=markup_start)
+
+
+async def name_one(update, context):
+    name = update.message.text
+    db_sess = db_session.create_session()
+    sus = db_sess.query(Suslik).filter(Suslik.name == name).first()
+    if sus:
+        line_1 = 'Имя: ' + sus.name + '\n'
+        line_2 = 'Информация: ' + sus.information + '\n'
+        line_3 = 'Местоположение:' + sus.location + '\n'
+        te = line_1 + line_2 + line_3
+        await context.bot.send_photo(chat_id=update.message.chat_id, photo=sus.foto_bytes, caption=te)
+    else:
+        await update.message.reply_text('Такого суслика в базе нет')
+    return ConversationHandler.END
+
+
 async def city_user(update, context):
     city = update.message.text
     text = find_closest(city)
@@ -189,15 +213,24 @@ async def city_user(update, context):
 def change_sus(name, what, new):
     db_sess = db_session.create_session()
     sus = db_sess.query(Suslik).filter(Suslik.name == name).first()
-    if what == 'имя':
+    if sus is None:
+        return 'Суслика с таким именем нет в базе'
+    name = ['имя', 'name']
+    info = ['информация', 'info', 'information']
+    loc = ['локация', 'местоположение', 'location', 'месторасположение']
+    foto = ['фото', 'фотография', 'foto', 'foto_bytes']
+    if what.lower() in name:
         sus.name = new
-    elif what == 'информация':
+    elif what.lower() in info:
         sus.information = new
-    elif what == 'местоположение':
+    elif what.lower() in loc:
         sus.location = new
-    else:
+    elif what.lower() in foto:
         sus.foto_bytes = new
+    else:
+        return 'Такого параметра у суслика нет'
     db_sess.commit()
+    return 'Готово'
 
 
 def add_sus(name, info, loca, foto):
@@ -252,7 +285,7 @@ def len_trip(us, sus):
         c_school = [float(i) for i in t2["Point"]["pos"].split()]
         return lonlat_distance(c_home, c_school)
     else:
-        print("Ошибка выполнения запроса")
+        return "Ошибка выполнения запроса"
 
 
 def find_closest(city):
@@ -260,7 +293,8 @@ def find_closest(city):
     al = []
     for sus in db_sess.query(Suslik):
         trip = len_trip(city, sus.location)
-        al.append((trip, sus.id))
+        if trip != str(trip):
+            al.append((trip, sus.id))
     al.sort(key=lambda s: s[0])
     return al[0][1]
 
@@ -299,6 +333,13 @@ conv_handler_4 = ConversationHandler(
         },
         fallbacks=[CommandHandler('ok', ok)]
     )
+conv_handler_5 = ConversationHandler(
+        entry_points=[CommandHandler('see_one_info', see_one_info)],
+        states={
+            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_one)]
+        },
+        fallbacks=[CommandHandler('ok', ok)]
+    )
 
 
 def main():
@@ -308,6 +349,7 @@ def main():
     application.add_handler(conv_handler_2)
     application.add_handler(conv_handler_3)
     application.add_handler(conv_handler_4)
+    application.add_handler(conv_handler_5)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("see_all_info", see_all_info))
     application.add_handler(CommandHandler("autorize", autorize))
