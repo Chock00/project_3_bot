@@ -309,6 +309,7 @@ def main():
     application.add_handler(conv_handler_3)
     application.add_handler(conv_handler_4)
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("see_all_info", see_all_info))
     application.add_handler(CommandHandler("autorize", autorize))
     application.add_handler(CommandHandler("close", close_keyboard))
     application.add_handler(text_handler)
