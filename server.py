@@ -28,7 +28,7 @@ markup_start = ReplyKeyboardMarkup(start_key, one_time_keyboard=False)
 async def start(update, context):
     await update.message.reply_text(
         '''Главная секретная система армии сопротивления против сусликов. 
-        Для использования системы, пожалуйста, введите свой пароль''', reply_keyboard=markup
+        Для использования системы, пожалуйста, введите свой пароль''', reply_markup=markup
     )  
 
 
@@ -76,7 +76,7 @@ async def see_all_info(update, context):
         for sus in db_sess.query(Suslik):
             line_1 = 'Имя: ' + sus.name + '\n'
             line_2 = 'Информация: ' + sus.information + '\n'
-            line_3 = 'Местоположение:' + sus.location + '\n'
+            line_3 = 'Местоположение: ' + sus.location + '\n'
             te = line_1 + line_2 + line_3
             await context.bot.send_photo(chat_id=update.message.chat_id, photo=sus.foto_bytes, caption=te)
     else:
